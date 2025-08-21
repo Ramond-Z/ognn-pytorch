@@ -6,13 +6,14 @@
 # --------------------------------------------------------
 
 import math
-import ocnn
 import torch
 import torch.nn.functional as F
-from torch.utils.checkpoint import checkpoint
 
-from ognn.octreed import OctreeD
-from ognn.utils import scatter_mean
+
+from torch.utils.checkpoint import checkpoint
+from ..ocnn.nn import OctreeGroupNorm
+from .octreed import OctreeD
+from .utils import scatter_mean
 
 
 class Activation(torch.nn.Module):
@@ -112,7 +113,7 @@ class GraphNorm(torch.nn.Module):
     if self.norm_type == 'batch_norm':
       self.norm = torch.nn.BatchNorm1d(in_channels)  # , bn_eps, bn_momentum)
     elif self.norm_type == 'group_norm':
-      self.norm = ocnn.nn.OctreeGroupNorm(in_channels, self.group)
+      self.norm = OctreeGroupNorm(in_channels, self.group)
     else:
       raise ValueError
 

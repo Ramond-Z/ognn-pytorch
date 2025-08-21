@@ -6,10 +6,11 @@
 # --------------------------------------------------------
 
 import torch
-import ocnn
 
+
+from .. import ocnn
 from typing import Optional
-from ocnn.octree import Octree, key2xyz, xyz2key
+from ..ocnn.octree import Octree, key2xyz, xyz2key
 
 
 class Graph:
