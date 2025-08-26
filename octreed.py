@@ -6,11 +6,12 @@
 # --------------------------------------------------------
 
 import torch
+import ocnn
 
 
-from .. import ocnn
 from typing import Optional
-from ..ocnn.octree import Octree, key2xyz, xyz2key
+from ocnn.octree import Octree
+from ocnn.octree.shuffled_key import key2xyz, xyz2key
 
 
 class Graph:
@@ -22,19 +23,19 @@ class Graph:
     # 49th to 58th bits (10 bits) contains the batch index, and the 59th to 63th
     # bits (5 bits) contains the node depth. Therefore, the batch size should be
     # smaller than 2^10, and the octree depth should be smaller than 2^5.
-    self.key_shift = 58
-    self.depth_min = None
-    self.depth_max = None
-    self.nnum = None         # the total node number
+    self.key_shift: int = 58
+    self.depth_min: int = None
+    self.depth_max: int = None
+    self.nnum: int = None         # the total node number
 
-    self.batch_id = None
-    self.node_depth = None
-    self.child = None        # the octree node has children or not
-    self.key = None          # the bits from the 58th is the node depth
-    self.octree_mask = None  # used to pad zeros for non-leaf nodes
+    self.batch_id: torch.Tensor = None
+    self.node_depth: torch.Tensor = None
+    self.child: torch.Tensor = None        # the octree node has children or not
+    self.key: torch.Tensor = None          # the bits from the 58th is the node depth
+    self.octree_mask: torch.Tensor = None  # used to pad zeros for non-leaf nodes
 
-    self.edge_idx = None     # the edge index in (i, j)
-    self.edge_dir = None     # the dirction of the edge
+    self.edge_idx: torch.Tensor = None     # the edge index in (i, j)
+    self.edge_dir: torch.Tensor = None     # the dirction of the edge
 
   @property
   def node_type(self):
@@ -43,6 +44,32 @@ class Graph:
   @property
   def edge_type(self):
     return self.edge_dir
+
+  @property
+  def device(self):
+    return self.batch_id.device if self.batch_id is not None else None
+
+  def to(self, device, *args, **kwargs):
+    if isinstance(device, str):
+      device = torch.device(device)
+    if self.device is None or self.device == device:
+      return self
+    else:
+      result = Graph()
+      result.key_shift = 58
+      result.depth_min = self.depth_min
+      result.depth_max = self.depth_max
+      result.nnum = self.nnum         # the total node number
+
+      result.batch_id = self.batch_id.to(device, *args, **kwargs)
+      result.node_depth = self.node_depth.to(device, *args, **kwargs)
+      result.child = self.child.to(device, *args, **kwargs)
+      result.key = self.key.to(device, *args, **kwargs)          # the bits from the 58th is the node depth
+      result.octree_mask = self.octree_mask.to(device, *args, **kwargs)  # used to pad zeros for non-leaf nodes
+
+      result.edge_idx = self.edge_idx.to(device, *args, **kwargs)     # the edge index in (i, j)
+      result.edge_dir = self.edge_dir.to(device, *args, **kwargs)
+      return result
 
 
 class OctreeD(Octree):
