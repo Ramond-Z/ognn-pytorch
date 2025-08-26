@@ -124,7 +124,36 @@ class OctreeD(Octree):
         dtype=torch.int64, device=self.device)
 
   def to(self, device, non_blocking: bool = False):
-    raise NotImplementedError('Use `octree.to()` before constucting `OctreeD`.')
+    if isinstance(device, str):
+      device = torch.device(device)
+
+    #  If on the save device, directly retrun self
+    if self.device == device:
+      return self
+
+    def list_to_device(prop):
+      return [p.to(device, non_blocking=non_blocking)
+              if isinstance(p, torch.Tensor) else None for p in prop]
+
+    # Construct a new Octree on the specified device
+    octree = object.__new__(OctreeD)
+    octree.full_depth = self.full_depth
+    octree.device = device
+    octree.depth = self.depth
+    octree.batch_size = self.batch_size
+    octree.keys = list_to_device(self.keys)
+    octree.children = list_to_device(self.children)
+    octree.neighs = list_to_device(self.neighs)
+    octree.inv_neighs = list_to_device(self.inv_neighs)
+    octree.features = list_to_device(self.features)
+    octree.normals = list_to_device(self.normals)
+    octree.points = list_to_device(self.points)
+    octree.nnum = self.nnum.clone()  # TODO: whether to move nnum to the self.device?
+    octree.nnum_nempty = self.nnum_nempty.clone()
+    octree.batch_nnum = self.batch_nnum.clone()
+    octree.batch_nnum_nempty = self.batch_nnum_nempty.clone()
+    octree.graphs = [g.to(device, non_blocking=non_blocking) for g in self.graphs]
+    return octree
 
   def batch_id(self, depth: int, nempty: bool = False):
     r""" Override the method in the Octree class. """
