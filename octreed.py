@@ -144,7 +144,7 @@ class OctreeD(Octree):
     octree.keys = list_to_device(self.keys)
     octree.children = list_to_device(self.children)
     octree.neighs = list_to_device(self.neighs)
-    octree.inv_neighs = list_to_device(self.inv_neighs)
+    # octree.inv_neighs = list_to_device(self.inv_neighs)
     octree.features = list_to_device(self.features)
     octree.normals = list_to_device(self.normals)
     octree.points = list_to_device(self.points)
@@ -220,11 +220,13 @@ class OctreeD(Octree):
     row = row.unsqueeze(0) + dis
     col = col.unsqueeze(0) + dis
     edge_dir = edge_dir.repeat(self.batch_size)
+    idx = row.view(-1) * 7 + edge_dir
+    sort_idx = torch.argsort(idx)
 
     # graph edges
     graph = self.graphs[depth]
-    graph.edge_dir = edge_dir.view(-1)
-    graph.edge_idx = torch.stack([row.view(-1), col.view(-1)])
+    graph.edge_dir = edge_dir.view(-1)[sort_idx]
+    graph.edge_idx = torch.stack([row.view(-1), col.view(-1)])[:, sort_idx]
 
     # graph nodes
     node_key = self.keys[depth]
@@ -312,7 +314,11 @@ class OctreeD(Octree):
     mask = torch.cat([leaf_mask, ones], dim=0)
     remapper = torch.cumsum(mask.long(), dim=0) - 1
     graph_d.edge_idx = remapper[graph_d.edge_idx]
-
+    row, col = graph_d.edge_idx
+    idx = row * 7 + graph_d.edge_dir
+    sort_idx = torch.argsort(idx)
+    graph_d.edge_idx = graph_d.edge_idx[:, sort_idx]
+    graph_d.edge_dir = graph_d.edge_dir[sort_idx]
     # depth and node numbers
     graph_d.depth_max = depth
     graph_d.depth_min = graph.depth_min
